@@ -1,0 +1,5 @@
+/llama3/
+/.mypy_cache/
+/.pytest_cache/
+.env
+__pycache__/
