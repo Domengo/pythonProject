@@ -1,0 +1,7 @@
+.ipynb_checkpoints
+__pycache__/
+__pycache__/app.cpython-39.pyc/
+__pycache__/utils.cpython-39.pyc/
+.env/
+files/
+.mypy_cache/
