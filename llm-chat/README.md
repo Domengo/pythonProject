@@ -15,7 +15,7 @@
 
 1. **Clone the Repository**: 
 ```
-git clone https://github.com/sowole-aims/chat-with-documents-app.git
+
 ```
 
 ``` 
