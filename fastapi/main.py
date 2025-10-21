@@ -1,15 +1,22 @@
-from typing import Union
+from typing import Union, Annotated
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Path, Query
 from pydantic import BaseModel
+import logfire
 
 app = FastAPI()
+
+logfire.configure()
+logfire.instrument_pydantic()
+# logfire.instrument_fastapi(app)
 
 
 class Item(BaseModel):
     name: str
     price: float
-    is_offer: Union[bool, None] = None
+    description: Union[str, None] = None
+    tax: Union[float, None] = None
+    q: str | None = None
 
 
 @app.get("/")
@@ -18,10 +25,43 @@ def read_root():
 
 
 @app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
+def item_read(item_id: int, q: Union[str, None] = None):
     return {"item_id": item_id, "q": q}
+
+
+@app.post("/items/")
+async def create_item(item: Item):
+    item_dict = item.dict()
+    if item.tax is not None:
+        price_with_tax = item.price + item.tax
+        item_dict.update({"price_with_tax": price_with_tax})
+    return item_dict
 
 
 @app.put("/items/{item_id}")
 def update_item(item_id: int, item: Item):
-    return {"item_name": item.name, "item_id": item_id}
+    return {"item_name": item.name, "item_id": item_id, **item.dict()}
+
+
+@app.get("/items/")
+async def read_items(q: Annotated[str | None, Query(alias="item-query",
+                                                    title="Query string",
+                                                    description="Query string for the items to search in the database that have a good match",
+                                                    min_length=3,
+                                                    max_length=50,
+                                                    pattern="^fixedquery$",
+                                                    deprecated=True,)] = None):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results
+
+@app.get("/items/{item_id}")
+async def test(
+    item_id: Annotated[int, Path(title="The ID of the item to get")],
+    q: Annotated[str | None, Query(alias="item-query")] = None,
+):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results
