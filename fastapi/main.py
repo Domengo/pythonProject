@@ -1,7 +1,7 @@
-from typing import Union, Annotated
+from typing import Literal, Union, Annotated
 
 from fastapi import FastAPI, Path, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import logfire
 
 app = FastAPI()
@@ -18,14 +18,26 @@ class Item(BaseModel):
     tax: Union[float, None] = None
     q: str | None = None
 
+class FilterParams(BaseModel):
+    model_config = {"extra": "forbid"}
+    limit: int = Field(100, gt=0, le=100)
+    offset: int = Field(0, ge=0)
+    order_by: Literal["created_at", "updated_at"] = "created_at"
+    tags: list[str] = []
+
+
+@app.get("/query/")
+async def read_query_params(filter_query: Annotated[FilterParams, Query()]):
+    return filter_query
+
 
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
 
 
-@app.get("/items/{item_id}")
-def item_read(item_id: int, q: Union[str, None] = None):
+@app.get("/path/{item_id}")
+def item_path(item_id: int = Path(..., title="The ID of the item to get"), q: Union[str, None] = None):
     return {"item_id": item_id, "q": q}
 
 
@@ -38,10 +50,22 @@ async def create_item(item: Item):
     return item_dict
 
 
-@app.put("/items/{item_id}")
-def update_item(item_id: int, item: Item):
-    return {"item_name": item.name, "item_id": item_id, **item.dict()}
+# @app.put("/items/{item_id}")
+# def update_item(item_id: int, item: Item):
+#     return {"item_name": item.name, "item_id": item_id, **item.dict()}
 
+@app.put("/items/{item_id}")
+async def update_item(
+    item_id: Annotated[int, Path(title="The ID of the item to get", ge=0, le=1000)],
+    q: str | None = None,
+    item: Item | None = None,
+):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    if item:
+        results.update({"item": item})
+    return results
 
 @app.get("/items/")
 async def read_items(q: Annotated[str | None, Query(alias="item-query",
